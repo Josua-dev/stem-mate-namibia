@@ -399,7 +399,7 @@ export const Plans: React.FC = () => {
                   <ul className="text-xs text-gray-600">
                     {plan.steps.slice(0, 3).map(step => (
                       <li key={step.id} className="flex items-start gap-2">
-                        <span className="text-gray-400">•</span>
+                        <span className="text-gray-500" aria-hidden="true">•</span>
                         <span className="line-clamp-1">{step.description}</span>
                       </li>
                     ))}
@@ -463,7 +463,7 @@ export const Plans: React.FC = () => {
                     setShowCreateForm(false);
                     setEditingPlan(null);
                   }}
-                  className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 rounded p-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  className="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 rounded p-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Close form"
                 >
                   ✕

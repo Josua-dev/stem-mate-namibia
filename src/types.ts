@@ -109,7 +109,10 @@ export interface PrivacyContext {
 // instructional words ("students", "classroom") that appear in legitimate
 // activity content.
 const PUPIL_WORD = '(pupil|learner|student|child)';
-const DATA_WORDS = 'name|photo|image|audio|video|profile|identifier|id|dob|date of birth|address|phone|email|age|grade|class|record|result|mark|score';
+// Data words that unambiguously indicate pupil data. Verb-colliding words
+// (record, mark, score, grade) and everyday phrases ("a class of learners")
+// are deliberately excluded — they over-block legitimate instructional text.
+const DATA_WORDS = 'name|photo|image|audio|video|profile|identifier|id|dob|date of birth|address|phone|email|age|result';
 
 export const FORBIDDEN_PATTERNS = [
   // "pupil name", "student ID", "learner photo", "child's address"…
@@ -118,7 +121,8 @@ export const FORBIDDEN_PATTERNS = [
   { pattern: new RegExp(`\\b(${DATA_WORDS})\\s+(?:of|for)\\s+(?:the\\s+|a\\s+)?${PUPIL_WORD}s?\\b`, 'i'), name: 'pupil data reference' },
   // possessives: "student's name", "learners' marks"
   { pattern: new RegExp(`\\b${PUPIL_WORD}s?\\s*[''’]\\s*s?\\b`, 'i'), name: 'pupil name (possessive)' },
-  // student ID numbers: "S123456", "ID: 20230123"
-  { pattern: /\bS\d{6,}\b/, name: 'student ID number' },
+  // student ID numbers: "S123456", "ID: 20230123". The S-pattern needs the
+  // case-insensitive flag because values are lowercased before matching.
+  { pattern: /\bS\d{6,}\b/i, name: 'student ID number' },
   { pattern: /\bID\s*[:#]?\s*\d{4,}\b/i, name: 'student ID number' },
 ]

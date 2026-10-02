@@ -172,7 +172,7 @@ export const SyncQueue: React.FC = () => {
       {queue.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow-card border border-gray-100">
           <p className="text-gray-500 text-lg mb-2">Sync queue is empty</p>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-600 text-sm">
             {isOnline
               ? 'All plans are synced ✓'
               : 'Plans will appear here when offline'}

@@ -337,7 +337,7 @@ export const Activities: React.FC = () => {
                 </h2>
                 <button
                   onClick={handleCloseDetails}
-                  className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  className="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Close details"
                 >
                   ✕
