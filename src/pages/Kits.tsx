@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { detectKitClash, validateKitRequest } from '../utils/clashDetector';
 import { getKitRequests, saveKitRequest, deleteKitRequest } from '../services/storageService';
 import type { KitRequest } from '../services/storageService';
+import { validatePrivacy } from '../utils/privacyValidator';
 import { v4 as uuidv4 } from 'uuid';
 
 export const Kits: React.FC = () => {
@@ -20,15 +21,16 @@ export const Kits: React.FC = () => {
   }, []);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    const latest = { ...formData, [field]: value };
+    setFormData(latest);
 
-    // Real-time clash detection
-    if (formData.kitName && formData.intendedDate) {
+    // Real-time clash detection using the latest values
+    if (latest.kitName && latest.intendedDate) {
       const clash = detectKitClash(
-        { kitName: formData.kitName, intendedDate: formData.intendedDate },
+        { kitName: latest.kitName, intendedDate: latest.intendedDate },
         requests.filter(r => r.status === 'current')
       );
-      setClashWarning(clash.message);
+      setClashWarning(clash.hasClash ? clash.message : '');
     }
   };
 
@@ -39,6 +41,22 @@ export const Kits: React.FC = () => {
     const errors = validateKitRequest(formData);
     if (errors.length > 0) {
       setClashWarning(errors.join('. '));
+      return;
+    }
+
+    // Privacy check before saving (no pupil data may be present)
+    const privacyResult = validatePrivacy({
+      title: formData.kitName,
+      description: '',
+      notes: '',
+      safetyNotes: '',
+      facilitator: formData.responsibleFacilitator,
+      materials: [],
+      steps: [],
+      inclusionPrompts: []
+    });
+    if (!privacyResult.valid) {
+      setClashWarning(`⚠ Cannot save: ${privacyResult.violations.join(', ')}`);
       return;
     }
 
@@ -203,7 +221,7 @@ export const Kits: React.FC = () => {
           <p className="text-gray-500 text-lg mb-2">
             {activeTab === 'current' ? 'No current kit requests' : 'No returned kits'}
           </p>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-600 text-sm">
             {activeTab === 'current'
               ? 'Create a new kit request to get started'
               : 'Returned kits will appear here'}

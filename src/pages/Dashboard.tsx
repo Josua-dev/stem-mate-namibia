@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useConnection } from '../contexts/ConnectionContext';
 import { getSavedActivities, getPlans, getKitRequests, getSyncQueue, getRecentActivity } from '../services/storageService';
 
 export const Dashboard: React.FC = () => {
   const { isOnline } = useConnection();
+  const location = useLocation();
   const [stats, setStats] = useState({
     savedActivities: 0,
     pendingSync: 0,
@@ -16,7 +17,7 @@ export const Dashboard: React.FC = () => {
   });
 
   useEffect(() => {
-    // Load stats
+    // Load stats (re-runs on route change so counts stay fresh)
     const savedActivities = getSavedActivities();
     const plans = getPlans();
     const kitRequests = getKitRequests();
@@ -32,7 +33,7 @@ export const Dashboard: React.FC = () => {
       returnedKits: kitRequests.filter(k => k.status === 'returned').length,
       recentActivity: recentActivity.slice(0, 5)
     });
-  }, []);
+  }, [location.pathname]);
 
   const statCards = [
     {

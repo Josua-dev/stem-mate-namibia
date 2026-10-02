@@ -6,11 +6,13 @@ import {
   savePlan,
   deletePlan,
   getSavedActivities,
-  addToSyncQueue
+  addToSyncQueue,
+  addRecentActivity
 } from '../services/storageService';
 import type { Activity, SessionPlan, PlanStep } from '../services/storageService';
 import { NAMIBIAN_ACTIVITIES } from '../data/activities';
 import { validatePrivacy } from '../utils/privacyValidator';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { v4 as uuidv4 } from 'uuid';
 
 interface PlanForm {
@@ -41,7 +43,10 @@ export const Plans: React.FC = () => {
     participationCount: 0
   });
   const [privacyError, setPrivacyError] = useState<string>('');
+  const [formError, setFormError] = useState<string>('');
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [planToDelete, setPlanToDelete] = useState<SessionPlan | null>(null);
+  const [lastSaved, setLastSaved] = useState<string>('');
 
   // Load plans
   useEffect(() => {
@@ -76,6 +81,9 @@ export const Plans: React.FC = () => {
 
   const handleInputChange = (field: keyof PlanForm, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'title' && formError) {
+      setFormError('');
+    }
   };
 
   const handleSelectActivity = (activityId: string) => {
@@ -154,12 +162,15 @@ export const Plans: React.FC = () => {
       : [...prev, plan]
     );
 
+    setPrivacyError('');
+    setLastSaved(new Date().toLocaleTimeString());
+
     // Don't navigate - just save as draft
   };
 
   const handleCompletePlan = async () => {
     if (!formData.title.trim()) {
-      alert('Please enter a plan title');
+      setFormError('Please enter a plan title before completing the plan.');
       return;
     }
 
@@ -182,7 +193,8 @@ export const Plans: React.FC = () => {
       status: 'completed'
     };
 
-    await savePlan(plan);
+    await savePlan(plan, false);
+    addRecentActivity('plan_completed', `Completed plan: "${plan.title}"`);
 
     // Add to sync queue for online sync
     addToSyncQueue(plan.id, plan.title);
@@ -194,6 +206,7 @@ export const Plans: React.FC = () => {
 
     setShowCreateForm(false);
     setEditingPlan(null);
+    setFormError('');
     setFormData({
       title: '',
       activityId: '',
@@ -206,11 +219,10 @@ export const Plans: React.FC = () => {
     });
   };
 
-  const handleDeletePlan = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this plan?')) {
-      await deletePlan(id);
-      setPlans(prev => prev.filter(p => p.id !== id));
-    }
+  const handleDeletePlan = async (plan: SessionPlan) => {
+    await deletePlan(plan.id);
+    setPlans(prev => prev.filter(p => p.id !== plan.id));
+    setPlanToDelete(null);
   };
 
   const handleNavigateToPlan = (planId: string) => {
@@ -220,6 +232,7 @@ export const Plans: React.FC = () => {
   const openCreateForm = () => {
     setShowCreateForm(true);
     setEditingPlan(null);
+    setLastSaved('');
     setFormData({
       title: '',
       activityId: '',
@@ -235,6 +248,7 @@ export const Plans: React.FC = () => {
   const openEditPlan = (plan: SessionPlan) => {
     setEditingPlan(plan);
     setShowCreateForm(true);
+    setLastSaved(new Date(plan.updatedAt).toLocaleTimeString());
     setFormData({
       title: plan.title,
       activityId: plan.activityId,
@@ -250,6 +264,53 @@ export const Plans: React.FC = () => {
   const isEditing = (planId: string): boolean => {
     return editingPlan?.id === planId;
   };
+
+  // Escape closes the plan form dialog; focus moves to the dialog heading on
+  // open and returns to the previously focused element on close
+  useEffect(() => {
+    if (!showCreateForm) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const heading = document.querySelector<HTMLElement>('#plan-form-title');
+    if (heading) {
+      heading.setAttribute('tabindex', '-1');
+      heading.focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowCreateForm(false);
+        setEditingPlan(null);
+        setFormError('');
+        return;
+      }
+      // Tab trap: keep keyboard focus inside the open dialog
+      if (e.key === 'Tab') {
+        const dialog = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]');
+        if (!dialog) return;
+        const focusable = dialog.querySelectorAll<HTMLElement>(
+          'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused?.focus();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCreateForm]);
 
   const savedActivityOptions = getSavedActivities().map(sa =>
     NAMIBIAN_ACTIVITIES.find(a => a.id === sa.activityId)
@@ -343,7 +404,7 @@ export const Plans: React.FC = () => {
                       </li>
                     ))}
                     {plan.steps.length > 3 && (
-                      <li className="text-xs text-gray-400">
+                      <li className="text-xs text-gray-600">
                         +{plan.steps.length - 3} more steps
                       </li>
                     )}
@@ -365,9 +426,9 @@ export const Plans: React.FC = () => {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDeletePlan(plan.id)}
+                  onClick={() => setPlanToDelete(plan)}
                   className="rounded-md bg-red-100 text-red-700 px-3 py-2 text-sm font-medium hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  aria-label="Delete plan"
+                  aria-label={`Delete plan ${plan.title}`}
                 >
                   Delete
                 </button>
@@ -380,7 +441,7 @@ export const Plans: React.FC = () => {
       {/* Create/Edit Form modal */}
       {showCreateForm && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 overflow-y-auto"
+          className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
           role="dialog"
           aria-modal="true"
           aria-labelledby="plan-form-title"
@@ -526,30 +587,61 @@ export const Plans: React.FC = () => {
 
               {/* Auto-save indicator */}
               <div className="text-xs text-gray-500">
-                Draft auto-saved • Last saved: <span className="font-medium">{new Date().toLocaleTimeString()}</span>
+                {lastSaved ? (
+                  <>Draft saved at <span className="font-medium">{lastSaved}</span> — keeps saving as you type</>
+                ) : (
+                  'Draft saves automatically as you type'
+                )}
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setShowCreateForm(false);
-                  setEditingPlan(null);
-                }}
-                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCompletePlan}
-                className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[44px]"
-              >
-                Save Draft
-              </button>
+            <div className="p-6 border-t border-gray-200">
+              {/* Form error */}
+              {formError && (
+                <p className="text-sm text-red-700 mb-3" role="alert">
+                  ⚠ {formError}
+                </p>
+              )}
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setEditingPlan(null);
+                    setFormError('');
+                  }}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveDraft}
+                  className="rounded-md border border-blue-700 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 min-h-[44px]"
+                >
+                  Save Draft
+                </button>
+                <button
+                  onClick={handleCompletePlan}
+                  className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 min-h-[44px]"
+                >
+                  Complete Plan
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        open={planToDelete !== null}
+        title="Delete this plan?"
+        description={`"${planToDelete?.title}" will be permanently removed from this device, along with its sync queue entry. This cannot be undone.`}
+        confirmLabel="Delete plan"
+        cancelLabel="Keep plan"
+        destructive
+        onConfirm={() => { if (planToDelete) handleDeletePlan(planToDelete); }}
+        onCancel={() => setPlanToDelete(null)}
+      />
     </div>
   );
 };

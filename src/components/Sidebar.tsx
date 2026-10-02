@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSyncQueue } from '../hooks/useSyncQueue';
 
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<{ open: boolean }> = ({ open }) => {
   const location = useLocation();
   const { pendingCount } = useSyncQueue();
 
@@ -16,7 +16,10 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen sticky top-16">
+    <aside
+      id="sidebar"
+      className={`bg-white border-r border-gray-200 min-h-screen sticky top-16 ${open ? 'w-64' : 'hidden'}`}
+    >
       <nav className="p-4" aria-label="Main navigation">
         <ul className="space-y-1">
           {navItems.map(item => (

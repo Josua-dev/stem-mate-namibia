@@ -99,48 +99,26 @@ export interface PrivacyContext {
   facilitator: string
 }
 
-// Allowed fields for any form - pupil data is NEVER allowed
-export const ALLOWED_FORM_FIELDS = [
-  'title', 'description', 'materials', 'steps', 'safetyNotes',
-  'inclusionPrompts', 'facilitator', 'duration', 'participationCount',
-  'kitName', 'intendedDate', 'planTitle', 'activityTitle'
-]
+// Pupils are never users: no pupil name, photo, audio, identifier or profile
+// may exist anywhere. See FORBIDDEN_PATTERNS below for what is blocked.
+
+// Forbidden: content that indicates pupil data is present in a form.
+// Pupils are never users: no pupil name, photo, audio, identifier or profile
+// may exist anywhere. These patterns catch pupil DATA references (e.g.
+// "pupil name", "student ID: 20230123", "learner photo") — not the everyday
+// instructional words ("students", "classroom") that appear in legitimate
+// activity content.
+const PUPIL_WORD = '(pupil|learner|student|child)';
+const DATA_WORDS = 'name|photo|image|audio|video|profile|identifier|id|dob|date of birth|address|phone|email|age|grade|class|record|result|mark|score';
 
 export const FORBIDDEN_PATTERNS = [
-  { pattern: /\bpupil\b/i, name: 'pupil' },
-  { pattern: /\bstudent\b/i, name: 'student' },
-  { pattern: /\bchild\b/i, name: 'child' },
-  { pattern: /\bchildren\b/i, name: 'children' },
-  { pattern: /\bname\b/i, name: 'name' },
-  { pattern: /\bphoto\b/i, name: 'photo' },
-  { pattern: /\bimage\b/i, name: 'image' },
-  { pattern: /\baudio\b/i, name: 'audio' },
-  { pattern: /\bvideo\b/i, name: 'video' },
-  { pattern: /\bprofile\b/i, name: 'profile' },
-  { pattern: /\bidentifier\b/i, name: 'identifier' },
-  { pattern: /\bID\b/i, name: 'identifier' },
-  { pattern: /\bDOB\b/i, name: 'date of birth' },
-  { pattern: /\bdate of birth\b/i, name: 'date of birth' },
-  { pattern: /\baddress\b/i, name: 'address' },
-  { pattern: /\bphone\b/i, name: 'phone' },
-  { pattern: /\bemail\b/i, name: 'email' },
-  { pattern: /\bage\b/i, name: 'age' },
-  { pattern: /\bgrade\b/i, name: 'grade' },
-  { pattern: /\bclass\b/i, name: 'class' },
-  { pattern: /\bsex\b/i, name: 'sex' },
-  { pattern: /\bgender\b/i, name: 'gender' },
-  { pattern: /\bethnicity\b/i, name: 'ethnicity' },
-  { pattern: /\bdisability\b/i, name: 'disability' },
-  { pattern: /\bmedical\b/i, name: 'medical' },
-  { pattern: /\bhealth\b/i, name: 'health' },
-  { pattern: /\ballergy\b/i, name: 'allergy' },
-  { pattern: /\bemergency contact\b/i, name: 'emergency contact' },
-  { pattern: /\bparent\b/i, name: 'parent' },
-  { pattern: /\bguardian\b/i, name: 'guardian' },
-  { pattern: /\bteacher\b/i, name: 'teacher' },
-  { pattern: /\blearner\b/i, name: 'learner' },
-  { pattern: /\blearners\b/i, name: 'learners' },
-  { pattern: /\bpupil name\b/i, name: 'pupil name' },
-  { pattern: /\bpersonal\b/i, name: 'personal' },
-  { pattern: /\bcontact\b/i, name: 'contact' },
+  // "pupil name", "student ID", "learner photo", "child's address"…
+  { pattern: new RegExp(`\\b${PUPIL_WORD}s?\\s+(${DATA_WORDS})\\b`, 'i'), name: 'pupil data reference' },
+  // "photo of the pupil", "record for the learner"…
+  { pattern: new RegExp(`\\b(${DATA_WORDS})\\s+(?:of|for)\\s+(?:the\\s+|a\\s+)?${PUPIL_WORD}s?\\b`, 'i'), name: 'pupil data reference' },
+  // possessives: "student's name", "learners' marks"
+  { pattern: new RegExp(`\\b${PUPIL_WORD}s?\\s*[''’]\\s*s?\\b`, 'i'), name: 'pupil name (possessive)' },
+  // student ID numbers: "S123456", "ID: 20230123"
+  { pattern: /\bS\d{6,}\b/, name: 'student ID number' },
+  { pattern: /\bID\s*[:#]?\s*\d{4,}\b/i, name: 'student ID number' },
 ]

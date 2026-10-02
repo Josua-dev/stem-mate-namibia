@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useConnection } from '../contexts/ConnectionContext';
-import { getSyncQueue, updateSyncStatus, removeFromSyncQueue, clearSyncedItems } from '../services/storageService';
+import { getSyncQueue, updateSyncStatus, clearSyncedItems } from '../services/storageService';
 import type { SyncQueueItem } from '../services/storageService';
 
 export const SyncQueue: React.FC = () => {
@@ -8,17 +8,11 @@ export const SyncQueue: React.FC = () => {
   const [queue, setQueue] = useState<SyncQueueItem[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string>('');
+  const [summary, setSummary] = useState<string>('');
 
   // Load queue on mount and when online status changes
   useEffect(() => {
     setQueue(getSyncQueue());
-  }, []);
-
-  useEffect(() => {
-    // Auto-sync when coming online
-    if (isOnline) {
-      handleSync();
-    }
   }, [isOnline]);
 
   const handleSync = async () => {
@@ -27,7 +21,9 @@ export const SyncQueue: React.FC = () => {
       return;
     }
 
-    const pendingItems = queue.filter(item => item.status === 'pending');
+    // Read from storage, not state: the mount-time auto-sync effect runs
+    // before the queue state is populated, so state would be stale-empty.
+    const pendingItems = getSyncQueue().filter(item => item.status === 'pending');
     if (pendingItems.length === 0) {
       setError('');
       return;
@@ -35,16 +31,17 @@ export const SyncQueue: React.FC = () => {
 
     setSyncing(true);
     setError('');
+    setSummary('');
 
-    // Simulate sync process
+    // Simulated sync process (no backend): each item resolves in ~1s, with a
+    // small failure rate so the failed state and retry path stay demonstrable.
+    let synced = 0;
+    let failed = 0;
     for (const item of pendingItems) {
       try {
-        // Simulate network request
         await new Promise((resolve, reject) => {
           setTimeout(() => {
-            // Simulate 90% success rate for demo
-            const success = Math.random() > 0.1;
-            if (success) {
+            if (Math.random() > 0.1) {
               resolve(true);
             } else {
               reject(new Error('Network error'));
@@ -53,24 +50,34 @@ export const SyncQueue: React.FC = () => {
         });
 
         updateSyncStatus(item.id, 'synced');
-        setQueue(prev => prev.map(qi =>
-          qi.id === item.id
-            ? { ...qi, status: 'synced', lastAttempt: new Date().toISOString() }
-            : qi
-        ));
-      } catch (err) {
+        synced++;
+      } catch {
         updateSyncStatus(item.id, 'failed');
-        setQueue(prev => prev.map(qi =>
-          qi.id === item.id
-            ? { ...qi, status: 'failed', retryCount: qi.retryCount + 1, lastAttempt: new Date().toISOString() }
-            : qi
-        ));
+        failed++;
       }
     }
 
+    // Synced items leave the queue once sent; failed items stay for retry.
+    // Refresh from storage so the page reflects what remains.
+    clearSyncedItems();
+    setQueue(getSyncQueue());
     setSyncing(false);
-    setError('');
+
+    if (failed === 0) {
+      setSummary(`✅ ${synced} ${synced === 1 ? 'plan' : 'plans'} synced successfully`);
+    } else {
+      setSummary(`⚠ ${synced} synced, ${failed} failed. Use Retry on the failed items below.`);
+    }
   };
+
+  // Auto-sync when coming online (declared after handleSync so the callback
+  // never reads it during initialization)
+  useEffect(() => {
+    if (isOnline) {
+      handleSync();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]);
 
   const handleRetry = (syncId: string) => {
     if (!isOnline) {
@@ -86,19 +93,8 @@ export const SyncQueue: React.FC = () => {
     ));
   };
 
-  const handleClearSynced = () => {
-    clearSyncedItems();
-    setQueue(prev => prev.filter(item => item.status !== 'synced'));
-  };
-
-  const handleDelete = (id: string) => {
-    removeFromSyncQueue(id);
-    setQueue(prev => prev.filter(item => item.id !== id));
-  };
-
   // Count by status
   const pendingCount = queue.filter(item => item.status === 'pending').length;
-  const syncedCount = queue.filter(item => item.status === 'synced').length;
   const failedCount = queue.filter(item => item.status === 'failed').length;
 
   return (
@@ -127,20 +123,26 @@ export const SyncQueue: React.FC = () => {
       </div>
 
       {/* Sync summary */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-card p-4 border border-gray-100">
           <p className="text-sm text-gray-500">Pending</p>
           <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-card p-4 border border-gray-100">
-          <p className="text-sm text-gray-500">Synced</p>
-          <p className="text-2xl font-bold text-green-600">{syncedCount}</p>
         </div>
         <div className="bg-white rounded-lg shadow-card p-4 border border-gray-100">
           <p className="text-sm text-gray-500">Failed</p>
           <p className="text-2xl font-bold text-red-600">{failedCount}</p>
         </div>
       </div>
+
+      {/* Sync result summary */}
+      {summary && (
+        <div
+          className={`rounded-lg p-4 mb-4 ${failedCount > 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200'}`}
+          role="status"
+        >
+          <p className={failedCount > 0 ? 'text-yellow-800' : 'text-green-800'}>{summary}</p>
+        </div>
+      )}
 
       {/* Error message */}
       {error && (
@@ -150,7 +152,7 @@ export const SyncQueue: React.FC = () => {
       )}
 
       {/* Sync button */}
-      <div className="mb-6 flex gap-3">
+      <div className="mb-6">
         <button
           onClick={handleSync}
           disabled={!isOnline || syncing || pendingCount === 0}
@@ -164,14 +166,6 @@ export const SyncQueue: React.FC = () => {
         >
           {syncing ? 'Syncing...' : 'Sync Now'}
         </button>
-        {syncedCount > 0 && (
-          <button
-            onClick={handleClearSynced}
-            className="rounded-md border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 min-h-[44px]"
-          >
-            Clear Synced ({syncedCount})
-          </button>
-        )}
       </div>
 
       {/* Sync queue list */}
@@ -194,7 +188,7 @@ export const SyncQueue: React.FC = () => {
                   Created: {new Date(item.createdAt).toLocaleString()}
                 </p>
                 {item.lastAttempt && (
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-600">
                     Last attempt: {new Date(item.lastAttempt).toLocaleString()}
                     {item.retryCount > 0 && ` • Retries: ${item.retryCount}`}
                   </p>
@@ -219,14 +213,6 @@ export const SyncQueue: React.FC = () => {
                       className="rounded-md bg-blue-100 text-blue-700 px-3 py-1 text-sm font-medium hover:bg-blue-200 min-h-[44px]"
                     >
                       Retry
-                    </button>
-                  )}
-                  {(item.status === 'synced') && (
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="rounded-md bg-gray-100 text-gray-700 px-3 py-1 text-sm font-medium hover:bg-gray-200 min-h-[44px]"
-                    >
-                      Remove
                     </button>
                   )}
                 </div>

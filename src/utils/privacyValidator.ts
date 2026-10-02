@@ -51,12 +51,22 @@ export function validatePrivacy(context: PrivacyContext): PrivacyCheckResult {
     }
   }
 
-  // Check for pupil name patterns (capitalized names in suspicious contexts)
-  const pupilNamePatterns = [
-    /\b[A-Z][a-z]+ [A-Z][a-z]+\b/g,  // "John Smith" patterns
+  // Heuristic checks run only on free-text fields where pupil information
+  // might be typed. Title is excluded (title-case activity names like
+  // "Water Cycle Simulation" and year numbers cause false positives) and
+  // facilitator is excluded (adult facilitator names are allowed).
+  const heuristicFields: Array<{ field: string; value: string }> = [
+    { field: 'description', value: context.description },
+    { field: 'notes', value: context.notes },
+    { field: 'safetyNotes', value: context.safetyNotes },
   ];
 
-  for (const { field, value } of fieldsToCheck) {
+  // Check for possible personal names ("John Smith" patterns)
+  const pupilNamePatterns = [
+    /\b[A-Z][a-z]+ [A-Z][a-z]+\b/g,
+  ];
+
+  for (const { field, value } of heuristicFields) {
     for (const pattern of pupilNamePatterns) {
       const matches = value.match(pattern);
       if (matches && matches.length > 0) {
@@ -65,14 +75,15 @@ export function validatePrivacy(context: PrivacyContext): PrivacyCheckResult {
     }
   }
 
-  // Check for numeric patterns that might be student IDs
+  // Check for numeric patterns that might be student IDs.
+  // 5+ digit bare numbers are flagged (Namibian student numbers are long);
+  // shorter numbers allow legitimate notes such as "150 learners attended".
+  // "ID:"-prefixed and S-prefixed IDs are caught globally by FORBIDDEN_PATTERNS.
   const idPatterns = [
-    /\b\d{3,}\b/g,  // 3+ digit numbers
-    /ID[:\s]?\d+/gi,  // ID followed by number
-    /\bS\d{6,}\b/,  // Student ID pattern like S123456
+    /\b\d{5,}\b/g,
   ];
 
-  for (const { field, value } of fieldsToCheck) {
+  for (const { field, value } of heuristicFields) {
     for (const pattern of idPatterns) {
       const matches = value.match(pattern);
       if (matches && matches.length > 0) {
@@ -83,26 +94,4 @@ export function validatePrivacy(context: PrivacyContext): PrivacyCheckResult {
 
   const valid = violations.length === 0;
   return { valid, violations };
-}
-
-/**
- * Sanitize a string by removing potential pupil data patterns
- */
-export function sanitizeContent(text: string): string {
-  let sanitized = text;
-
-  // Remove patterns that look like identifiers
-  sanitized = sanitized.replace(/\bID[:\s]?\d+\b/gi, '[REDACTED]');
-  sanitized = sanitized.replace(/\bS\d{6,}\b/g, '[REDACTED]');
-  sanitized = sanitized.replace(/\b\d{3,}\b/g, '[REDACTED]');
-
-  return sanitized;
-}
-
-/**
- * Quick validation - just check if any forbidden pattern exists in text
- */
-export function quickPrivacyCheck(text: string): boolean {
-  const lowerText = text.toLowerCase();
-  return !FORBIDDEN_PATTERNS.some(({ pattern }) => pattern.test(lowerText));
 }

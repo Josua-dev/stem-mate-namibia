@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+/* Dark variant keyed to the .dark class on <html>, which the Settings
+   toggle applies. Kept as a custom variant so dark: utilities also work
+   in components that use them. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens — Swiss anchor per DESIGN.md: white surfaces, system sans,
+   Yves Klein Blue accent, soft shadows. */
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Accent scale re-tuned to Yves Klein Blue (#002FA7). Filled buttons use
+     blue-600; hover states step darker so the change is always visible. */
+  --color-blue-500: #1e4fd8;
+  --color-blue-600: #002fa7;
+  --color-blue-700: #002350;
+  --color-blue-800: #001b3d;
+  --color-blue-900: #001b3d;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* Explicit page background (cards sit on this with shadow-card). */
+body {
+  background-color: #f7f7f8;
+  color: #111827;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark mode. The Settings toggle puts .dark on <html>. Pages are written with
+   light-mode utilities, so the overrides below remap the core surfaces, text
+   and borders; tinted chips keep their own self-contained contrast.
+--------------------------------------------------------------------------- */
+.dark body {
+  background-color: #0b0f14;
+  color: #e5e7eb;
+}
+.dark .bg-white { background-color: #111827; }
+.dark .bg-gray-50 { background-color: #0b0f14; }
+.dark .bg-gray-100 { background-color: #1f2937; }
+.dark .bg-gray-200 { background-color: #374151; }
+.dark .bg-gray-300 { background-color: #374151; }
+.dark .text-gray-900 { color: #f9fafb; }
+.dark .text-gray-800 { color: #f3f4f6; }
+.dark .text-gray-700 { color: #e5e7eb; }
+.dark .text-gray-600 { color: #d1d5db; }
+.dark .text-gray-500 { color: #9ca3af; }
+.dark .text-gray-400 { color: #9ca3af; }
+.dark .border-gray-100 { border-color: #374151; }
+.dark .border-gray-200 { border-color: #374151; }
+.dark .border-gray-300 { border-color: #4b5563; }
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #374151; }
+.dark .shadow-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+
+/* Tinted status surfaces on dark */
+.dark .bg-blue-50 { background-color: rgba(0, 47, 167, 0.15); }
+.dark .bg-blue-100 { background-color: rgba(0, 47, 167, 0.25); }
+.dark .text-blue-700 { color: #93c5fd; }
+.dark .text-blue-100 { color: #bfdbfe; }
+.dark .text-blue-900 { color: #bfdbfe; }
+.dark .bg-green-50 { background-color: rgba(27, 140, 62, 0.15); }
+.dark .bg-green-100 { background-color: rgba(27, 140, 62, 0.25); }
+.dark .text-green-700 { color: #6ee7a0; }
+.dark .text-green-800 { color: #6ee7a0; }
+.dark .bg-red-50 { background-color: rgba(198, 40, 40, 0.15); }
+.dark .bg-red-100 { background-color: rgba(198, 40, 40, 0.25); }
+.dark .text-red-700 { color: #fca5a5; }
+.dark .text-red-800 { color: #fca5a5; }
+.dark .bg-amber-100 { background-color: rgba(230, 81, 0, 0.25); }
+.dark .text-amber-600 { color: #fdba74; }
+.dark .text-amber-700 { color: #fdba74; }
+.dark .bg-yellow-50 { background-color: rgba(230, 81, 0, 0.15); }
+.dark .bg-yellow-100 { background-color: rgba(230, 81, 0, 0.25); }
+.dark .text-yellow-700 { color: #fdba74; }
+.dark .text-yellow-800 { color: #fdba74; }
+
+/* Hover states on dark */
+.dark .hover\:bg-gray-50:hover { background-color: #1f2937; }
+.dark .hover\:bg-gray-100:hover { background-color: #374151; }
+.dark .hover\:bg-gray-200:hover { background-color: #4b5563; }
+.dark .hover\:bg-blue-50:hover { background-color: rgba(0, 47, 167, 0.3); }
+.dark .hover\:bg-blue-100:hover { background-color: rgba(0, 47, 167, 0.4); }
+.dark .hover\:bg-red-50:hover { background-color: rgba(198, 40, 40, 0.3); }
+.dark .hover\:bg-red-100:hover { background-color: rgba(198, 40, 40, 0.4); }
+.dark .hover\:bg-red-200:hover { background-color: rgba(198, 40, 40, 0.5); }
+.dark .hover\:bg-green-100:hover { background-color: rgba(27, 140, 62, 0.4); }
+.dark .hover\:bg-green-200:hover { background-color: rgba(27, 140, 62, 0.5); }
+.dark .hover\:text-gray-600:hover { color: #f3f4f6; }
+
+/* ---------------------------------------------------------------------------
+   High contrast. Bolder text and borders; works in light and dark (rules
+   further down reconcile the two together).
+--------------------------------------------------------------------------- */
+.high-contrast body { color: #000000; }
+.high-contrast .text-gray-900 { color: #000000; }
+.high-contrast .text-gray-800 { color: #000000; }
+.high-contrast .text-gray-700 { color: #1a1a1a; }
+.high-contrast .text-gray-600 { color: #1a1a1a; }
+.high-contrast .text-gray-500 { color: #1a1a1a; }
+.high-contrast .text-gray-400 { color: #1a1a1a; }
+.high-contrast .border-gray-100 { border-color: #000000; }
+.high-contrast .border-gray-200 { border-color: #000000; }
+.high-contrast .border-gray-300 { border-color: #000000; }
+
+/* Dark + high contrast together */
+.dark.high-contrast body { color: #ffffff; }
+.dark.high-contrast .text-gray-900 { color: #ffffff; }
+.dark.high-contrast .text-gray-800 { color: #ffffff; }
+.dark.high-contrast .text-gray-700 { color: #f3f4f6; }
+.dark.high-contrast .text-gray-600 { color: #f3f4f6; }
+.dark.high-contrast .text-gray-500 { color: #f3f4f6; }
+.dark.high-contrast .text-gray-400 { color: #f3f4f6; }
+.dark.high-contrast .border-gray-100 { border-color: #ffffff; }
+.dark.high-contrast .border-gray-200 { border-color: #ffffff; }
+.dark.high-contrast .border-gray-300 { border-color: #ffffff; }
+
+/* ---------------------------------------------------------------------------
+   Font size setting. SettingsContext writes data-font-size onto <html>;
+   scaling the root rem makes every rem-based utility grow with it.
+--------------------------------------------------------------------------- */
+[data-font-size="large"] { font-size: 18px; }
+[data-font-size="xl"] { font-size: 20px; }
+
+/* ---------------------------------------------------------------------------
+   Reduced motion. The app has one continuous animation (the page-loader
+   spinner); it stops under prefers-reduced-motion while the sr-only status
+   text keeps announcing. Hover colour changes are instant state feedback and
+   stay — no global motion kill that would destroy useful feedback.
+--------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin { animation: none; }
+}

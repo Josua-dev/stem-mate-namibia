@@ -33,12 +33,6 @@ export function initializeStorage() {
   const storedVersion = localStorage.getItem(STORAGE_KEYS.VERSION);
 
   if (storedVersion !== CURRENT_VERSION) {
-    // Clear old data on version change (in production, you might want to migrate)
-    if (storedVersion) {
-      console.log(`Upgrading from version ${storedVersion} to ${CURRENT_VERSION}`);
-      // In a real app, you'd migrate data here
-    }
-
     // Set current version
     localStorage.setItem(STORAGE_KEYS.VERSION, CURRENT_VERSION);
 
@@ -64,26 +58,6 @@ function getDefaultSettings(): Settings {
     highContrast: false,
     connectionSimulation: 'auto'
   };
-}
-
-/* ACTIVITIES */
-// Activities are imported statically, not stored in localStorage
-export function getActivities(): Activity[] {
-  // In a real app, you might fetch these from an API or bundle
-  // For now, we import them from the data file
-  // This is a placeholder - in actual implementation, you'd import from data/activities.ts
-  return [];
-}
-
-export function saveActivity(_activity: Activity): void {
-  // Activities are reference data, not user-generated
-  // This function exists for API consistency
-  console.warn('Activities are reference data and cannot be saved by users');
-}
-
-export function removeActivity(_id: string): void {
-  // Activities are reference data
-  console.warn('Activities are reference data and cannot be removed by users');
 }
 
 /* SAVED ACTIVITIES */
@@ -127,7 +101,7 @@ export function getPlans(): SessionPlan[] {
   return plans ? JSON.parse(plans) : [];
 }
 
-export function savePlan(plan: SessionPlan): void {
+export function savePlan(plan: SessionPlan, logActivity = true): void {
   const plans = getPlans();
   const existingIndex = plans.findIndex(p => p.id === plan.id);
 
@@ -137,10 +111,12 @@ export function savePlan(plan: SessionPlan): void {
   } else {
     // Add new plan
     plans.push(plan);
+    if (logActivity) {
+      addRecentActivity('plan_created', `Created plan: "${plan.title}"`);
+    }
   }
 
   localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
-  addRecentActivity('plan_created', `Created plan: "${plan.title}"`);
 }
 
 export function deletePlan(id: string): void {
@@ -291,11 +267,6 @@ export function addRecentActivity(type: RecentActivity['type'], description: str
   localStorage.setItem(STORAGE_KEYS.RECENT_ACTIVITY, JSON.stringify(activities));
 }
 
-/* CONNECTION STATUS */
-export function isOnline(): boolean {
-  return navigator.onLine;
-}
-
 /* APPLY SETTINGS TO DOM */
 function applySettingsToDOM(settings: Settings): void {
   const root = document.documentElement;
@@ -316,13 +287,6 @@ function applySettingsToDOM(settings: Settings): void {
 
   // Font size
   root.dataset.fontSize = settings.fontSize;
-
-  // Connection simulation (override for testing)
-  if (settings.connectionSimulation !== 'auto') {
-    // This would be used to simulate online/offline states for testing
-    // In production, you'd use the actual navigator.onLine
-    console.log(`Connection simulation set to: ${settings.connectionSimulation}`);
-  }
 }
 
 /* DATA MIGRATION / CLEANUP */

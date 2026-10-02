@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { exportAllData, importAllData, clearAllData } from '../services/storageService';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import type { Settings as SettingsOptions } from '../types';
 
 export const Settings: React.FC = () => {
@@ -9,6 +10,7 @@ export const Settings: React.FC = () => {
     success: boolean;
     message: string;
   } | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleExport = () => {
     const data = exportAllData();
@@ -42,15 +44,14 @@ export const Settings: React.FC = () => {
   };
 
   const handleReset = () => {
-    if (window.confirm('Are you sure you want to reset all data? This cannot be undone.')) {
-      clearAllData();
-      updateSettings({
-        darkMode: false,
-        fontSize: 'base',
-        highContrast: false,
-        connectionSimulation: 'auto'
-      });
-    }
+    clearAllData();
+    updateSettings({
+      darkMode: false,
+      fontSize: 'base',
+      highContrast: false,
+      connectionSimulation: 'auto'
+    });
+    setShowResetConfirm(false);
   };
 
   return (
@@ -206,7 +207,7 @@ export const Settings: React.FC = () => {
 
             {/* Reset data */}
             <button
-              onClick={handleReset}
+              onClick={() => setShowResetConfirm(true)}
               className="w-full flex items-center justify-start gap-3 px-4 py-3 text-left border border-red-200 rounded-md hover:bg-red-50 text-red-800"
             >
               <span className="text-lg" aria-hidden="true">🗑️</span>
@@ -294,10 +295,17 @@ export const Settings: React.FC = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <div className="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
-        <p>STEMMate Namibia v1.0.0 • Offline-first planning for Namibian STEM education</p>
-      </div>
+      {/* Reset confirmation dialog */}
+      <ConfirmDialog
+        open={showResetConfirm}
+        title="Reset all data?"
+        description="This clears all saved activities, plans, kit requests and sync queue items on this device. This cannot be undone."
+        confirmLabel="Reset all data"
+        cancelLabel="Keep my data"
+        destructive
+        onConfirm={handleReset}
+        onCancel={() => setShowResetConfirm(false)}
+      />
     </div>
   );
 };

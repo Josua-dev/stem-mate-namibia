@@ -1,7 +1,7 @@
 // STEMMate Namibia - Synthetic Namibian Context Activities
 // Version: v1.0.0
 
-import type { Activity, ActivityLevel, ActivityDuration } from '../types';
+import type { Activity } from '../types';
 
 export const NAMIBIAN_ACTIVITIES: Activity[] = [
   {
@@ -312,22 +312,3 @@ export const NAMIBIAN_ACTIVITIES: Activity[] = [
     createdAt: '2026-09-15T09:05:00Z'
   }
 ];
-
-// Helper functions for activity data
-export const getActivityById = (id: string): Activity | undefined => {
-  return NAMIBIAN_ACTIVITIES.find(activity => activity.id === id);
-};
-
-export const getActivitiesByLevel = (level: ActivityLevel): Activity[] => {
-  return NAMIBIAN_ACTIVITIES.filter(activity => activity.level === level);
-};
-
-export const getActivitiesByTopic = (topic: string): Activity[] => {
-  return NAMIBIAN_ACTIVITIES.filter(activity =>
-    activity.topic.toLowerCase().includes(topic.toLowerCase())
-  );
-};
-
-export const getActivitiesByDuration = (duration: ActivityDuration): Activity[] => {
-  return NAMIBIAN_ACTIVITIES.filter(activity => activity.duration === duration);
-};

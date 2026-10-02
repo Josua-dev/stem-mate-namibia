@@ -86,6 +86,51 @@ export const Activities: React.FC = () => {
     setSelectedActivity(null);
   };
 
+  // Escape closes the details dialog; focus moves to the dialog heading on
+  // open and returns to the previously focused element on close
+  useEffect(() => {
+    if (!selectedActivity) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const heading = document.querySelector<HTMLElement>('#activity-details-title');
+    if (heading) {
+      heading.setAttribute('tabindex', '-1');
+      heading.focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseDetails();
+        return;
+      }
+      // Tab trap: keep keyboard focus inside the open dialog
+      if (e.key === 'Tab') {
+        const dialog = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]');
+        if (!dialog) return;
+        const focusable = dialog.querySelectorAll<HTMLElement>(
+          'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused?.focus();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedActivity]);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl">
       {/* Page header */}
@@ -196,7 +241,7 @@ export const Activities: React.FC = () => {
         {filteredActivities.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <p className="text-gray-500 text-lg">No activities found matching your search</p>
-            <p className="text-gray-400 text-sm mt-2">Try adjusting your search or filter criteria</p>
+            <p className="text-gray-600 text-sm mt-2">Try adjusting your search or filter criteria</p>
           </div>
         ) : (
           filteredActivities.map(activity => (
@@ -276,7 +321,7 @@ export const Activities: React.FC = () => {
       {/* Activity details modal */}
       {selectedActivity && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="activity-details-title"

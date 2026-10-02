@@ -2,10 +2,10 @@ import React, { Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ConnectionProvider } from './contexts/ConnectionContext';
 import { SettingsProvider } from './contexts/SettingsContext';
-import { Sidebar } from './components/Sidebar';
 import { AppShell } from './components/AppShell';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SkipLink } from './components/SkipLink';
+import { RouteFocusManager } from './components/RouteFocusManager';
 
 // Lazy load pages for performance
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(mod => ({ default: mod.Dashboard })));
@@ -28,9 +28,9 @@ const App: React.FC = () => {
       <SettingsProvider>
         <div className="min-h-screen bg-gray-50">
           <SkipLink />
+          <RouteFocusManager />
           <AppShell>
-            <Sidebar />
-            <main id="main-content" className="flex-1" role="main">
+            <main id="main-content" className="flex-1" tabIndex={-1}>
               <ErrorBoundary>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
